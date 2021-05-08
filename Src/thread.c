@@ -1,12 +1,13 @@
 /*
  * @Author: your name
  * @Date: 2021-02-22 07:04:56
- * @LastEditTime: 2021-05-03 17:38:05
+ * @LastEditTime: 2021-05-07 23:21:01
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \MDK-ARMf:\project\myRTOS\nucleo-64\hello\RTOS\Src\thread.c
  */
 #include "osdef.h"
+#include "ipc.h"
 
 TCB_t idle;
 uint32_t idle_stack[idle_size];
@@ -233,7 +234,7 @@ status_t os_thread_sleep(TCB_t *thread, uint32_t delay)
 
     __enable_irq();
     
-    DEBUG_LOG(("--%s sleep\r\n", thread->name));
+    DEBUG_LOG(("--%s sleep %dms\r\n", thread->name, delay));
 
     // do a scheudle
     os_scheudle();
@@ -273,7 +274,7 @@ status_t os_thread_sleep_ipc(TCB_t *thread, uint32_t delay, list_t **list)
 
     __enable_irq();
     
-    DEBUG_LOG(("--%s sleep for ipc\r\n", thread->name));
+    DEBUG_LOG(("--%s sleep for ipc %dms\r\n", thread->name, delay));
 
     // do a scheudle
     os_scheudle();
@@ -345,12 +346,21 @@ status_t __os_thread_prio_set(TCB_t *thread, uint8_t prio)
  * @param {status_t}
  * @return {status_t}
  */
+
+#define DEBUG_LEN 80
+
 void idle_entry(void)
 {
+    char msg[DEBUG_LEN];
+    uint32_t len;
+
     while(1) {
-        // if (led_state)
-        //     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
-        // else 
-            // HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
+        len = 0;
+        if (os_mqueue_recv(DEBUG_DELAY, msg, &len, NOWAIT) == os_ok) {
+            for (uint32_t i=0; i<len; i++) {
+                os_putc(msg[i]);
+            }
+        }
+
     }
 } 

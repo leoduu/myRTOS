@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-04-21 10:17:50
- * @LastEditTime: 2021-05-03 19:09:13
+ * @LastEditTime: 2021-05-08 22:48:31
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \MDK-ARMd:\project\myRTOS\nucleo-64\hello\RTOS\Src\mem.c
@@ -13,11 +13,13 @@
 static uint8_t os_mem[MEM_SIZE];        
 static os_mem_t *mem_begin;    
 
-const uint32_t os_mem_size = sizeof(os_mem_t);
+#define os_mem_size 12
 
 void os_mem_init(void)
 {
-    // 8 对齐
+    // 4 Bytes align
+
+
     memset(os_mem, 0, MEM_SIZE);
     
     mem_begin = (os_mem_t *)os_mem;
@@ -44,7 +46,7 @@ void *os_malloc(const uint32_t size)
 
     // traverse 
     while (mem->magic != MEM_END) {
-        // find a free sapce
+        // find a free sapce`   
         if (mem->magic == MEM_FREE) {
 
             // check if the spcse is enough
@@ -56,8 +58,9 @@ void *os_malloc(const uint32_t size)
                 // check if the remaining space has at least 1 Byte           
                 if (_size > size+os_mem_size) {
 
-                    // make a new mem_node for this apace
-                    os_mem_t *mem_new = (os_mem_t *)((uint32_t)mem + os_mem_size+size);
+                    // make a new mem_node for this apace        
+                    os_mem_t *mem_new;
+                    mem_new = (os_mem_t *)((uint32_t)mem + os_mem_size + size);
                     mem_new->magic = MEM_FREE;
                     // link these node
                     mem_new->prev = mem;
@@ -80,7 +83,6 @@ void *os_malloc(const uint32_t size)
     return NULL;
 }
 
-
 void os_free(void *p)
 {
     os_mem_t *mem;
@@ -89,9 +91,6 @@ void os_free(void *p)
     uint8_t flag = 0;   //0:none 1:prev 2:next 3:both
 
     __disable_irq();
-
-    printf("0x%x\n", (uint32_t)p);
-    os_mem_show();
 
     // get head of this memory
     mem = (os_mem_t *)((uint32_t)p - os_mem_size);
@@ -131,8 +130,6 @@ void os_free(void *p)
         mem->magic = MEM_FREE;
         break;
     }
-    
-    os_mem_show();
 
     __enable_irq();
 
@@ -142,19 +139,19 @@ void os_mem_show(void)
 {
     os_mem_t *mem = mem_begin;
 
-    printf("\n ___memory map___total:%d______\n|\n",MEM_SIZE);
-    //printf("| 0x%x size\n", (mem->magic&0xFFF0)?"USED":"FREE");
+    os_printf("\n ___memory map___total:%d______\n|\n",MEM_SIZE);
+    os_printf("| 0x%x size\n", (mem->magic&0xFFF0)?"USED":"FREE");
 
     // traverse 
     while (mem->magic != MEM_END) {
         
-        printf("|  0x%x  %s  size:%d\n", (uint32_t)mem+os_mem_size, 
+        os_printf("|  0x%x  %s  size:%d\n", (uint32_t)mem+os_mem_size, 
                (mem->magic&0x000F)?"USED":"FREE", (uint32_t)mem->next-(uint32_t)mem-os_mem_size);
 
         // find next space
         mem = mem->next;
     }
 
-    printf("|  0x%x  END\n|_______________________________\n\n", 
+    os_printf("|  0x%x  END\n|_______________________________\n\n", 
            (uint32_t)mem + os_mem_size);
 }

@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-02-22 07:08:25
- * @LastEditTime: 2021-05-03 17:56:18
+ * @LastEditTime: 2021-05-07 23:34:06
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \MDK-ARMf:\project\myRTOS\nucleo-64\hello\RTOS\Inc\osconfig.h
@@ -14,7 +14,7 @@
 #define THREAD_NAME_LEN         10
 #define THREAD_PRIORITY_MAX     16
 
-#define DEBUG_FLAG          0
+#define DEBUG_FLAG          1
 #define DEBUG_USER_FLAG     1   
 #define ASSERT_FLAG         1
 
@@ -45,21 +45,24 @@
 
 ////////////////////////////////////
 // debug
+#define DEBUG_DELAY  1
+
+
 #if DEBUG_FLAG == 1
-    #define DEBUG_LOG(msg) printf msg
+    #define DEBUG_LOG(msg) os_printf_delay msg
 #else 
     #define DEBUG_LOG(msg)
 #endif
 
 #if DEBUG_USER_FLAG == 1
-    #define DEBUG_USER(msg) printf msg
+    #define DEBUG_USER(msg) os_printf msg
 #else 
     #define DEBUG_USER(msg)
 #endif
 
 #if ASSERT_FLAG == 1
     #define OS_ASSERT
-    #define DEBUG_ASSERT(msg) printf msg
+    #define DEBUG_ASSERT(msg) os_printf msg
 #else
     
     #define DEBUG_ASSERT(msg)

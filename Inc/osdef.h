@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-02-22 07:33:33
- * @LastEditTime: 2021-05-03 16:50:07
+ * @LastEditTime: 2021-05-07 23:07:51
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \MDK-ARMf:\project\myRTOS\nucleo-64\hello\RTOS\Inc\osdef.h
@@ -165,6 +165,8 @@ static inline status_t os_delay(uint32_t delay)
     return os_thread_sleep(os_get_current_thread(), delay);
 }
 
+extern volatile uint32_t os_tick;
+
 #define idle_size 128
 
 void idle_entry(void);
@@ -195,9 +197,7 @@ status_t os_timer_add_to_list(timer_t *timer);
 
 #define os_assert(expr) \
     (expr) ? ((void)0U): os_assert_failed((uint8_t *)__FILE__, __LINE__)
-    
 void os_assert_failed(uint8_t *file, uint32_t line);
-    
 #else
   #define os_assert(expr) ((void)0U)
 #endif
@@ -211,5 +211,8 @@ status_t __os_list_detch_after(list_t *l, list_t *n);
 status_t __os_list_detach(list_t **l, list_t *n);
 status_t __os_list_detach_first(list_t **l);
 
+int os_putc(char c);
+void os_printf(const char *fmt, ...);
+void os_printf_delay(const char *fmt, ...);
 
 #endif

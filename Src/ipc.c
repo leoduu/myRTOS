@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-03-16 20:58:22
- * @LastEditTime: 2021-04-30 11:47:22
+ * @LastEditTime: 2021-05-07 23:41:31
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \MDK-ARMf:\project\myRTOS\nucleo-64\hello\RTOS\Src\ipc.c
@@ -48,7 +48,7 @@ status_t os_mutex_create(uint32_t id)
     
     __disable_irq();
     
-    mutex = (os_mutex_t *)malloc(sizeof(os_mutex_t));
+    mutex = (os_mutex_t *)os_malloc(sizeof(os_mutex_t));
     // initialize parameter
     mutex->id = id; 
     mutex->value = 1;
@@ -190,8 +190,8 @@ status_t os_mutex_delete(uint32_t id)
 
     // detach the mutex from mutex queue
     __os_list_detach(&mutex_queue, &mutex->list);
-    // free up memory space 
-    free(mutex);
+    // os_free up memory space 
+    os_free(mutex);
 
     DEBUG_LOG(("--mutex:%d del\r\n", mutex->id));
     __enable_irq();
@@ -253,7 +253,7 @@ status_t os_sem_create(uint32_t id, int value)
     
     __disable_irq();
 
-    sem = (os_sem_t *)malloc(sizeof(os_sem_t));
+    sem = (os_sem_t *)os_malloc(sizeof(os_sem_t));
     // initialize parameter
     sem->id = id; 
     sem->value = value;
@@ -375,8 +375,8 @@ status_t os_sem_delete(uint32_t id)
 
     // detach the mutex from mutex queue
     __os_list_detach(&sem_queue, &sem->list);
-    // free up memory space 
-    free(sem);
+    // os_free up memory space 
+    os_free(sem);
 
     __enable_irq();
     DEBUG_LOG(("--sem:%d del\r\n", sem->id));
@@ -678,7 +678,7 @@ int8_t __os_mqueue_get_used(uint32_t id)
 
 static inline status_t __os_msg_send_size_add(os_mqueue_t* mq, uint32_t size)
 {
-    os_send_size_t *s = (os_send_size_t *)malloc(sizeof(os_send_size_t));
+    os_send_size_t *s = (os_send_size_t *)os_malloc(sizeof(os_send_size_t));
     __os_list_init(&s->list);
     s->size = size;
     // add size
@@ -701,7 +701,7 @@ status_t os_mqueue_create(uint32_t id, uint32_t max_size)
     
     __disable_irq();
         
-    os_mqueue_t *mqueue = (os_mqueue_t *)malloc(sizeof(os_mqueue_t));
+    os_mqueue_t *mqueue = (os_mqueue_t *)os_malloc(sizeof(os_mqueue_t));
     // initialize parameter
     mqueue->id = id; 
     mqueue->size = 0;
@@ -716,13 +716,13 @@ status_t os_mqueue_create(uint32_t id, uint32_t max_size)
     
     __enable_irq();
 
-    DEBUG_LOG(("--mqueue%d create\r\n", mqueue->id));
+    //DEBUG_LOG(("--mqueue%d create\r\n", mqueue->id));
     
     return os_ok;
 }
 
 
-status_t os_mqueue_send(uint32_t id, uint32_t *buff, uint32_t size, int delay)
+status_t os_mqueue_send(uint32_t id, void *buff, uint32_t size, int delay)
 {
     os_mqueue_t *mqueue; 
     TCB_t       *thread;
@@ -765,8 +765,8 @@ status_t os_mqueue_send(uint32_t id, uint32_t *buff, uint32_t size, int delay)
     // It shows that the message queue isn't empty if the code comes here
 
     // add to the end of buff list
-    msg = (os_msg_t *)malloc(sizeof(os_msg_t));
-    msg->buff = malloc(size);
+    msg = (os_msg_t *)os_malloc(sizeof(os_msg_t));
+    msg->buff = os_malloc(size);
     __os_list_init(&msg->list);
     memcpy(msg, buff, size);
     __os_list_add_end(&mqueue->buf_list, &msg->list);
@@ -783,17 +783,19 @@ status_t os_mqueue_send(uint32_t id, uint32_t *buff, uint32_t size, int delay)
     }
 
     __enable_irq();
-    DEBUG_LOG(("--%s send to mqueue%d\r\n", thread->name, mqueue->id));
+    //DEBUG_LOG(("--%s send to mqueue%d\r\n", thread->name, mqueue->id));
 
     return os_ok;
 }
 
-uint32_t os_mqueue_recv(uint32_t id, uint32_t *buff, int delay)
+status_t os_mqueue_recv(uint32_t id, void *buff, uint32_t* len, int delay)
 {
     os_mqueue_t *mqueue;
     TCB_t       *thread; 
     os_msg_t    *msg;
     uint32_t    size;
+
+    *len = 0;
 
     mqueue = __os_mqueue_find_id(id);
     // if this id is nonexistent, return error
@@ -807,7 +809,7 @@ uint32_t os_mqueue_recv(uint32_t id, uint32_t *buff, int delay)
     // if no message in queue
     if (mqueue->size == 0) {
         // do not wait 
-        if (delay == NOWAIT) return 0;
+        if (delay == NOWAIT) return OS_error;
         
         __enable_irq();
         // sleep and wait
@@ -824,8 +826,6 @@ uint32_t os_mqueue_recv(uint32_t id, uint32_t *buff, int delay)
             DEBUG_LOG(("--mbox:%d %s timeout\r\n", mqueue->id, thread->name));
             return os_timeout;
         }
-        
-        
     }    
     
     if (mqueue->size) {
@@ -834,8 +834,8 @@ uint32_t os_mqueue_recv(uint32_t id, uint32_t *buff, int delay)
         memcpy(buff, msg->buff, msg->size);
         __os_list_detach(&mqueue->buf_list, &msg->list);
         size = msg->size;
-        free(msg->buff);
-        free(msg); 
+        os_free(msg->buff);
+        os_free(msg); 
         mqueue->size -= size;   
     }
 
@@ -853,9 +853,10 @@ uint32_t os_mqueue_recv(uint32_t id, uint32_t *buff, int delay)
     }      
 
     __enable_irq();
-    DEBUG_LOG(("--%s recv from mqueue%d\r\n", thread->name, mqueue->id));
+    //DEBUG_LOG(("--%s recv from mqueue%d\r\n", thread->name, mqueue->id));
 
-    return size;  
+    *len = size;
+    return os_ok;  
 }
 
 status_t os_mqueue_delete(uint32_t id)

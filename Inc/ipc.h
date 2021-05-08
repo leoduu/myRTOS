@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-03-16 20:58:03
- * @LastEditTime: 2021-05-03 16:49:40
+ * @LastEditTime: 2021-05-07 23:24:44
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \MDK-ARMf:\project\myRTOS\nucleo-64\hello\RTOS\Inc\ipc.h
@@ -10,7 +10,6 @@
 #define __IPC_H__
 
 #include "osdef.h"
-
 
 #ifdef OS_MUTEX 
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -127,8 +126,8 @@ typedef struct {
 } os_mqueue_t;
 
 status_t os_mqueue_create(uint32_t id, uint32_t buf_size);
-status_t os_mqueue_send(uint32_t id, uint32_t *buff, uint32_t size, int delay);
-uint32_t os_mqueue_recv(uint32_t id, uint32_t *buff, int delay);
+status_t os_mqueue_send(uint32_t id, void *buff, uint32_t size, int delay);
+status_t os_mqueue_recv(uint32_t id, void *buff, uint32_t* len, int delay);
 status_t os_mqueue_delete(uint32_t id);
 
 #endif // OS_MSG_QUEUE

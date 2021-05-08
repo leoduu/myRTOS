@@ -1,12 +1,13 @@
 /*
  * @Author: your name
  * @Date: 2021-02-22 05:08:35
- * @LastEditTime: 2021-05-03 15:42:48
+ * @LastEditTime: 2021-05-07 23:31:38
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \MDK-ARMf:\project\myRTOS\nucleo-64\hello\RTOS\Src\scheudler.c
  */
 #include "osdef.h"
+#include "ipc.h"
 
 TCB_t *current_thread;
 TCB_t *next_thread;
@@ -26,6 +27,8 @@ status_t os_scheudler_init(void)
 	
     // initialze memory management
     os_mem_init();
+    
+    os_mqueue_create(DEBUG_DELAY, 512);
 	
     // initialize all queue
     for (uint8_t i=0; i<THREAD_PRIORITY_MAX; ++i) {
@@ -56,15 +59,17 @@ status_t os_scheudler_init(void)
 status_t os_scheudler_start(void)
 {
 
+    
     // create the idle thread
     os_thread_init(&idle, "idle", idle_entry, NULL, 15, idle_stack, sizeof(idle_stack));
-		// put idle to ready queue
+	// put idle to ready queue
     os_thread_ready(&idle);
     current_thread = &idle;	
     
-	    DEBUG_LOG(("--os start!!!\r\n"));
+	DEBUG_LOG(("--os start!!!\r\n"));
 
     __enable_irq();
+
 	
     os_thread_start_first_thread(&idle.sp);
     

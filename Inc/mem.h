@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-04-21 10:18:11
- * @LastEditTime: 2021-05-03 15:43:31
+ * @LastEditTime: 2021-05-08 22:47:24
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \MDK-ARMd:\project\myRTOS\nucleo-64\hello\RTOS\Inc\mem.h
@@ -18,8 +18,17 @@
 #define MEM_USED   0xabc1
 #define MEM_END    0xabc2
 
-// magic(3Bytes for verify and 1Bytes for useing flag) 
-// list(8Byte)
+/* Return the most contiguous size aligned at specified width. 
+   OS_ALIGN(13, 4) equal would return 16.
+ */
+#define OS_ALIGN(size, align)   (((size) + (align) - 1) & ~((align) - 1))
+#define OS_ALIGN_4(size)        OS_ALIGN(size, 4)
+
+/* magic(3 Bytes for verify and 1 Bytes for useing flag) 
+ * list(two pointer 8 Bytes)
+ * all is 12 Bytes
+ */
+
 typedef struct mem_node
 {
     uint32_t magic;    // 0xabc + 1Byte flag
