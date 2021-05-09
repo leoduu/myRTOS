@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-02-22 07:04:56
- * @LastEditTime: 2021-05-07 23:21:01
+ * @LastEditTime: 2021-05-09 13:26:06
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \MDK-ARMf:\project\myRTOS\nucleo-64\hello\RTOS\Src\thread.c
@@ -84,7 +84,7 @@ status_t os_thread_init(TCB_t         	*thread,
     // initialize list node
     __os_list_init(&(thread->list));
     
-    DEBUG_LOG(("--%s create\r\n", thread->name));
+    //DEBUG_LOG(("--%s create\r\n", thread->name));
 
     return os_ok;
 }
@@ -110,7 +110,7 @@ status_t os_thread_start(TCB_t *thread)
     // update statue to ready
     thread->status = Thread_Ready;
 
-    DEBUG_LOG(("--%s start\r\n", thread->name));
+    //DEBUG_LOG(("--%s start\r\n", thread->name));
 
     os_scheudle();
     

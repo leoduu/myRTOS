@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-02-22 06:23:36
- * @LastEditTime: 2021-04-09 13:54:01
+ * @LastEditTime: 2021-05-09 15:32:51
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \MDK-ARMf:\project\myRTOS\nucleo-64\hello\RTOS\Src\cpuport.c
@@ -94,7 +94,7 @@ uint32_t os_SysTick_Config(uint32_t ticks)
     }
 
     SysTick->LOAD  = (uint32_t)(ticks - 1UL);           /* set reload register */
-    NVIC_SetPriority (SysTick_IRQn, 0xFF);              /* set Priority for Systick Interrupt */
+    NVIC_SetPriority (SysTick_IRQn, 0x00);              /* set Priority for Systick Interrupt */
     SysTick->VAL   = 0UL;                               /* Load the SysTick Counter Value */
     SysTick->CTRL  = SysTick_CTRL_CLKSOURCE_Msk |
                      SysTick_CTRL_TICKINT_Msk   |

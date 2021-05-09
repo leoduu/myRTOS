@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-03-16 20:58:22
- * @LastEditTime: 2021-05-07 23:41:31
+ * @LastEditTime: 2021-05-09 01:03:20
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \MDK-ARMf:\project\myRTOS\nucleo-64\hello\RTOS\Src\ipc.c
@@ -83,6 +83,7 @@ status_t os_mutex_acquire(uint32_t id, int delay)
     thread = os_get_current_thread();
 
     if (mutex->own_thread == thread) {
+        __enable_irq();
         return os_ok;
     }
 
@@ -93,10 +94,12 @@ status_t os_mutex_acquire(uint32_t id, int delay)
         if (mutex->orignal_prio < thread->priority) {
             __os_thread_prio_set(thread, thread->priority);
         }
-        // do not wait
-        if (delay == NOWAIT) return OS_error;
         
         __enable_irq();
+        
+        // do not wait
+        if (delay == NOWAIT) return OS_error;
+
         // sleep and wait
         os_thread_sleep_ipc(thread, delay, &mutex->suspend_queue);
         /* Now the CPU is working with PSP. When we switch context, 
@@ -281,8 +284,6 @@ status_t os_sem_acquire(uint32_t id, int delay)
     os_assert(sem);
     // check if the delay is legal
     os_assert(delay>=NOWAIT);
-
-    __disable_irq();
     
     // thread who want to acquire semaphore
     thread = os_get_current_thread();
@@ -292,7 +293,6 @@ status_t os_sem_acquire(uint32_t id, int delay)
         // do not wait 
         if (delay == NOWAIT) return OS_error;
         
-        __enable_irq();
         // sleep and wait
         os_thread_sleep_ipc(thread, delay, &sem->suspend_queue);
         /* When the thread resume, the code will 
@@ -313,7 +313,6 @@ status_t os_sem_acquire(uint32_t id, int delay)
     // It shows that the semaphore has value if the code comes here
     // take a semaphore
     sem->value--;
-    __enable_irq();
     
     DEBUG_LOG(("--sem:%d acq by %s :%d\r\n", sem->id, thread->name, sem->value));
 
@@ -467,15 +466,13 @@ status_t os_mbox_send(uint32_t id, uint32_t data, int delay)
 {
     os_mbox_t   *mbox; 
     TCB_t     *thread;
-    os_mbuff_t *mbuff;
+    os_mbuf_t *mbuf;
 
     mbox = __os_mbox_find_id(id);
     // check if the mailbox of this id is inexistent
     os_assert(mbox);
     // check if the delay is legal
     os_assert(delay>=NOWAIT);
-
-    __disable_irq();
 
     // thread who want to send mail
     thread = os_get_current_thread();
@@ -484,7 +481,7 @@ status_t os_mbox_send(uint32_t id, uint32_t data, int delay)
     if (mbox->num >= mbox->max_num) {
         // do not wait
         if (delay == NOWAIT) return OS_error;
-        __enable_irq();
+        
         // sleep and wait for vacancy
         os_thread_sleep_ipc(thread, delay, &mbox->send_queue);
         /* When the thread resume, the code will 
@@ -501,14 +498,17 @@ status_t os_mbox_send(uint32_t id, uint32_t data, int delay)
             return os_timeout;
         }
     } 
-
+    
     // It shows that the mbox can hold mail if the code comes here
-    mbuff = (os_mbuff_t *)os_malloc(sizeof(os_mbuff_t));
-    __os_list_init(&mbuff->list);
+
+    __disable_irq();
+    
+    mbuf = (os_mbuf_t *)os_malloc(sizeof(os_mbuf_t));
+    __os_list_init(&mbuf->list);
     // copy data
-    mbuff->data = data;
-    // add to buff queue
-    __os_list_add_end(&mbox->buf_list, &mbuff->list);
+    mbuf->data = data;
+    // add to buf queue
+    __os_list_add_end(&mbox->buf_list, &mbuf->list);
     // num of mails adds one
     mbox->num++; 
 
@@ -533,13 +533,11 @@ status_t os_mbox_recv(uint32_t id, uint32_t *data, int delay)
 {
     os_mbox_t   *mbox;
     TCB_t     *thread; 
-    os_mbuff_t *mbuff;
+    os_mbuf_t *mbuf;
 
     mbox = __os_mbox_find_id(id);
     // if this id is nonexistent, return error
-    if (mbox == NULL) return OS_error;
-    
-    __disable_irq();    
+    if (mbox == NULL) return OS_error; 
 
     // thread who want to receive mail
     thread = os_get_current_thread();
@@ -549,7 +547,6 @@ status_t os_mbox_recv(uint32_t id, uint32_t *data, int delay)
         // do not wait 
         if (delay == NOWAIT) return OS_error;
         
-        __enable_irq();
         // sleep and wait
         os_thread_sleep_ipc(thread, delay, &mbox->recv_queue);
         /* When the thread resume, the code will 
@@ -569,12 +566,14 @@ status_t os_mbox_recv(uint32_t id, uint32_t *data, int delay)
     
     // It shows that the mailbox isn't empty if the code comes here
     
+    __disable_irq();   
+
     // take out the first mail
-    mbuff = (os_mbuff_t *)mbox->buf_list;
-    *data = mbuff->data;
-    // detach the mail from mbuff list
+    mbuf = (os_mbuf_t *)mbox->buf_list;
+    *data = mbuf->data;
+    // detach the mail from mbuf list
     __os_list_detach_first(&mbox->buf_list);
-    os_free(mbuff);
+    os_free(mbuf);
     mbox->num--;    
 
     // Check if any threads is suspended for sending
@@ -617,7 +616,7 @@ status_t os_mbox_delete(uint32_t id)
         os_thread_wakeup(thread);   
     } 
     
-    // clear buff list
+    // clear buf list
     while(mbox->buf_list != NULL) {
         __os_list_detach_first(&(mbox->buf_list));  
     } 
@@ -722,7 +721,7 @@ status_t os_mqueue_create(uint32_t id, uint32_t max_size)
 }
 
 
-status_t os_mqueue_send(uint32_t id, void *buff, uint32_t size, int delay)
+status_t os_mqueue_send(uint32_t id, void *buf, uint32_t size, int delay)
 {
     os_mqueue_t *mqueue; 
     TCB_t       *thread;
@@ -734,7 +733,6 @@ status_t os_mqueue_send(uint32_t id, void *buff, uint32_t size, int delay)
     // check if the delay is legal
     os_assert(delay>=NOWAIT);
 
-    __disable_irq();
 
     // thread who want to send message
     thread = os_get_current_thread();
@@ -744,6 +742,7 @@ status_t os_mqueue_send(uint32_t id, void *buff, uint32_t size, int delay)
         // do not wait
         if (delay == NOWAIT) return OS_error;
 
+        __disable_irq();
         __os_msg_send_size_add(mqueue, size);
         __enable_irq();
         // sleep and wait for vacancy
@@ -763,12 +762,15 @@ status_t os_mqueue_send(uint32_t id, void *buff, uint32_t size, int delay)
     } 
     
     // It shows that the message queue isn't empty if the code comes here
+    
+    __disable_irq();
 
-    // add to the end of buff list
+    // add to the end of buf list
     msg = (os_msg_t *)os_malloc(sizeof(os_msg_t));
-    msg->buff = os_malloc(size);
+    msg->buf = os_malloc(size);
+    msg->size = size;
     __os_list_init(&msg->list);
-    memcpy(msg, buff, size);
+    memcpy(msg->buf, buf, size);
     __os_list_add_end(&mqueue->buf_list, &msg->list);
     mqueue->size += size; 
 
@@ -788,7 +790,7 @@ status_t os_mqueue_send(uint32_t id, void *buff, uint32_t size, int delay)
     return os_ok;
 }
 
-status_t os_mqueue_recv(uint32_t id, void *buff, uint32_t* len, int delay)
+status_t os_mqueue_recv(uint32_t id, void *buf, uint32_t* len, int delay)
 {
     os_mqueue_t *mqueue;
     TCB_t       *thread; 
@@ -800,8 +802,6 @@ status_t os_mqueue_recv(uint32_t id, void *buff, uint32_t* len, int delay)
     mqueue = __os_mqueue_find_id(id);
     // if this id is nonexistent, return error
     if (mqueue == NULL) return OS_error;
-    
-    __disable_irq();    
 
     // thread who want to receive message
     thread = os_get_current_thread();
@@ -810,8 +810,7 @@ status_t os_mqueue_recv(uint32_t id, void *buff, uint32_t* len, int delay)
     if (mqueue->size == 0) {
         // do not wait 
         if (delay == NOWAIT) return OS_error;
-        
-        __enable_irq();
+
         // sleep and wait
         os_thread_sleep_ipc(thread, delay, &mqueue->recv_queue);
         /* When the thread resume, the code will 
@@ -827,14 +826,16 @@ status_t os_mqueue_recv(uint32_t id, void *buff, uint32_t* len, int delay)
             return os_timeout;
         }
     }    
+
+    __disable_irq();
     
     if (mqueue->size) {
         // take out the first message
         msg = (os_msg_t *)mqueue->buf_list;
-        memcpy(buff, msg->buff, msg->size);
+        memcpy(buf, msg->buf, msg->size);
         __os_list_detach(&mqueue->buf_list, &msg->list);
         size = msg->size;
-        os_free(msg->buff);
+        os_free(msg->buf);
         os_free(msg); 
         mqueue->size -= size;   
     }
@@ -843,7 +844,7 @@ status_t os_mqueue_recv(uint32_t id, void *buff, uint32_t* len, int delay)
     if (mqueue->send_queue) {
         // inform send suspended thread
         thread = __CAST_LIST_TO_TCB(mqueue->send_queue);
-        // check if buffer area has enough space
+        // check if bufer area has enough space
         if (mqueue->size+__os_msg_send_size_first(mqueue) <= mqueue->max_size) {
             __os_list_detach_first(&(mqueue->size_queue));
             __os_list_detach(&(mqueue->send_queue), &(thread->list));
@@ -884,7 +885,7 @@ status_t os_mqueue_delete(uint32_t id)
         os_thread_wakeup(thread);   
     } 
 
-    // clear buff list
+    // clear buf list
     do {
         __os_list_detach_first(&(mqueue->buf_list));  
     } while(mqueue->buf_list != NULL);

@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-03-16 20:58:03
- * @LastEditTime: 2021-05-07 23:24:44
+ * @LastEditTime: 2021-05-09 01:04:44
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \MDK-ARMf:\project\myRTOS\nucleo-64\hello\RTOS\Inc\ipc.h
@@ -71,7 +71,7 @@ typedef struct
 {
     list_t      list;
     uint32_t    data;
-} os_mbuff_t;
+} os_mbuf_t;
 
 typedef struct {
     list_t      list;
@@ -102,14 +102,14 @@ status_t os_mbox_delete(uint32_t id);
 typedef struct 
 {
     list_t      list;
-    void        *buff;
-    uint32_t    size;
+    void        *buf;
+    uint16_t    size;
 } os_msg_t;
 
 typedef struct 
 {
     list_t      list;
-    uint32_t    size;
+    uint16_t    size;
 } os_send_size_t;
 
 typedef struct {
@@ -118,7 +118,7 @@ typedef struct {
 
     list_t      *buf_list;
     uint32_t    max_size;
-    uint8_t     size;
+    uint16_t     size;
 
     list_t      *send_queue;
     list_t      *size_queue;
@@ -126,8 +126,8 @@ typedef struct {
 } os_mqueue_t;
 
 status_t os_mqueue_create(uint32_t id, uint32_t buf_size);
-status_t os_mqueue_send(uint32_t id, void *buff, uint32_t size, int delay);
-status_t os_mqueue_recv(uint32_t id, void *buff, uint32_t* len, int delay);
+status_t os_mqueue_send(uint32_t id, void *buf, uint32_t size, int delay);
+status_t os_mqueue_recv(uint32_t id, void *buf, uint32_t* len, int delay);
 status_t os_mqueue_delete(uint32_t id);
 
 #endif // OS_MSG_QUEUE

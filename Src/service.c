@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-03-03 22:04:10
- * @LastEditTime: 2021-05-07 22:58:26
+ * @LastEditTime: 2021-05-09 01:08:15
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \MDK-ARMf:\project\myRTOS\nucleo-64\hello\RTOS\Src\service.c
@@ -42,10 +42,10 @@ static uint32_t os_vsprintf(char *buf, const char *fmt, va_list va_ptr)
             case 'd':
                 value = va_arg(va_ptr, int);
                 i = 0;
-                while (value) {
+                do {
                     num[i++] = value % 10;
                     value /= 10;
-                }
+                } while (value);
                 while(i) buf[len++] = digits[num[--i]];
                 break;   
             

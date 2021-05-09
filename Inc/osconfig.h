@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-02-22 07:08:25
- * @LastEditTime: 2021-05-07 23:34:06
+ * @LastEditTime: 2021-05-09 14:11:09
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \MDK-ARMf:\project\myRTOS\nucleo-64\hello\RTOS\Inc\osconfig.h
@@ -15,7 +15,7 @@
 #define THREAD_PRIORITY_MAX     16
 
 #define DEBUG_FLAG          1
-#define DEBUG_USER_FLAG     1   
+#define DEBUG_USER_FLAG     0   
 #define ASSERT_FLAG         1
 
 #define MUTEX_FLAG          1
@@ -49,7 +49,10 @@
 
 
 #if DEBUG_FLAG == 1
-    #define DEBUG_LOG(msg) os_printf_delay msg
+    #define DEBUG_LOG(msg) \
+        os_printf_delay("[%d] ", os_tick); \
+        os_printf_delay("[%ld] ", SysTick->VAL); \
+        os_printf_delay msg
 #else 
     #define DEBUG_LOG(msg)
 #endif

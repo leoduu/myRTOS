@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-04-21 10:17:50
- * @LastEditTime: 2021-05-08 22:48:31
+ * @LastEditTime: 2021-05-09 13:41:29
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \MDK-ARMd:\project\myRTOS\nucleo-64\hello\RTOS\Src\mem.c
@@ -18,14 +18,12 @@ static os_mem_t *mem_begin;
 void os_mem_init(void)
 {
     // 4 Bytes align
-
-
     memset(os_mem, 0, MEM_SIZE);
     
     mem_begin = (os_mem_t *)os_mem;
 
     os_mem_t * mem_end;
-    mem_end = (os_mem_t *)((uint32_t)os_mem + MEM_SIZE - os_mem_size);
+    mem_end = (os_mem_t *)OS_ALIGN_4((uint32_t)os_mem + MEM_SIZE - os_mem_size);
 
     mem_begin->magic = MEM_FREE;
     mem_begin->prev = NULL;
@@ -37,27 +35,31 @@ void os_mem_init(void)
 
 }
 
-void *os_malloc(const uint32_t size)
+void *os_malloc(uint32_t size)
 {
     os_mem_t *mem = mem_begin;
-    uint32_t _size;
+    int32_t _size;
 
     __disable_irq();
 
+    //os_mem_show();
+
+    size = OS_ALIGN_4(size);
+
     // traverse 
     while (mem->magic != MEM_END) {
-        // find a free sapce`   
+        // find a free sapce  
         if (mem->magic == MEM_FREE) {
 
             // check if the spcse is enough
-            _size = (uint32_t)mem->next - (uint32_t)mem;
-            if (_size >= size) {
+            _size = (uint32_t)mem->next - (uint32_t)mem - size - os_mem_size;
+            if ((int)_size >= 0) {
                 // find a appropriate space
                 mem->magic = MEM_USED;     
+                memset((void *)((uint32_t)mem + os_mem_size), 0, size);
 
-                // check if the remaining space has at least 1 Byte           
-                if (_size > size+os_mem_size) {
-
+                // check if the remaining space has at least 4 Byte           
+                if ((int)_size >= os_mem_size+4) {
                     // make a new mem_node for this apace        
                     os_mem_t *mem_new;
                     mem_new = (os_mem_t *)((uint32_t)mem + os_mem_size + size);
@@ -68,12 +70,12 @@ void *os_malloc(const uint32_t size)
                     mem->next->prev = mem_new;
                     mem->next = mem_new;
                 }                
+                //os_printf("malloc 0x%x %d\n", ((uint32_t)mem + os_mem_size), size);
+                //os_mem_show();
+                            
+                __enable_irq();
+                return (void *)((uint32_t)mem + os_mem_size);
             }
-            
-            memset((void *)((uint32_t)mem + os_mem_size), 0, size);
-
-            __enable_irq();
-            return (void *)((uint32_t)mem + os_mem_size);
         }
         // find next space
         mem = mem->next;
@@ -91,6 +93,8 @@ void os_free(void *p)
     uint8_t flag = 0;   //0:none 1:prev 2:next 3:both
 
     __disable_irq();
+
+//		os_mem_show();
 
     // get head of this memory
     mem = (os_mem_t *)((uint32_t)p - os_mem_size);
@@ -130,6 +134,9 @@ void os_free(void *p)
         mem->magic = MEM_FREE;
         break;
     }
+		
+    //os_printf("free   0x%x\n", p);
+	 	//os_mem_show();
 
     __enable_irq();
 
@@ -140,7 +147,7 @@ void os_mem_show(void)
     os_mem_t *mem = mem_begin;
 
     os_printf("\n ___memory map___total:%d______\n|\n",MEM_SIZE);
-    os_printf("| 0x%x size\n", (mem->magic&0xFFF0)?"USED":"FREE");
+    // os_printf("|  0x%x size\n", (mem->magic&0x000F)?"USED":"FREE");
 
     // traverse 
     while (mem->magic != MEM_END) {
