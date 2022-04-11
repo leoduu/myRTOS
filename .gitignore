@@ -52,3 +52,7 @@ Mkfile.old
 dkms.conf
 
 *.vscode/
+
+**/target
+*.dis
+*.sh
