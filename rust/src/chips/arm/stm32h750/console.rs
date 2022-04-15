@@ -5,7 +5,6 @@ use stm32h7xx_hal::serial::{Tx, Rx};
 
 use crate::drivers::{Driver, DeviceType};
 use crate::drivers::console::*;
-use core::cell::RefCell;
 use core::fmt::{self, Write};
 use stm32h7::stm32h743v::USART1;
 use stm32h7::stm32h743v::DMA1;
@@ -24,19 +23,17 @@ use super::hal::{
 
 
 pub struct Console {
-    // pub uart: RefCell<Option<Serial<USART1>>>,
-    tx: RefCell<Option<Tx<USART1>>>,
-    rx: RefCell<Option<Rx<USART1>>>,
-    stream: RefCell<Option<Stream0<DMA1>>>,
+    tx: Option<Tx<USART1>>,
+    rx: Option<Rx<USART1>>,
+    stream: Option<Stream0<DMA1>>,
 }
 
 impl Console {
     pub const fn new() -> Self {
         Self {
-            // uart: RefCell::new(None)
-            tx: RefCell::new(None),
-            rx: RefCell::new(None),
-            stream: RefCell::new(None),
+            tx: None,
+            rx: None,
+            stream: None,
         }
     }
 
@@ -59,14 +56,14 @@ impl Console {
 
         let (tx, rx) = uart1.split();
 
-        self.tx.replace(Some(tx));
-        self.rx.replace(Some(rx));
+        self.tx = Some(tx);
+        self.rx = Some(rx);
 
-        self.stream.replace(Some(StreamsTuple::new(dma, dma1).0));
+        self.stream = Some(StreamsTuple::new(dma, dma1).0);
 
     }
 
-    pub fn write_dma(&self, args: fmt::Arguments) {
+    pub fn write_dma(&mut self, args: fmt::Arguments) {
 
         let s = unsafe { &mut *(args.as_str().unwrap() as *const _ as *mut [u8]) };
 
@@ -101,30 +98,44 @@ impl Console {
         while !transfer.get_transfer_complete_flag() {}
         let (stream, tx, _, _) = transfer.free();
 
-        self.tx.replace(Some(tx));
-        self.stream.replace(Some(stream));
+        self.tx = Some(tx);
+        self.stream = Some(stream);
     }
 }
 
 impl ConsoleDriver for Console {
     #[inline(always)]
-    fn write_fmt(&self, args: fmt::Arguments) -> fmt::Result {
-        self.tx.borrow_mut().as_mut().unwrap().write_fmt(args)
+    fn write_fmt(&mut self, args: fmt::Arguments) -> fmt::Result {
+        if let Some(tx) = &mut self.tx {
+            tx.write_fmt(args)
+        } else {
+            panic!()
+        }
     }
 
     #[inline(always)]
-    fn write_char(&self, c: char) -> fmt::Result {
-        self.tx.borrow_mut().as_mut().unwrap().write_char(c)
+    fn write_char(&mut self, c: char) -> fmt::Result {
+        if let Some(tx) = &mut self.tx {
+            tx.write_char(c)
+        } else {
+            panic!()
+        }
     }
 
     #[inline(always)]
-    fn read(&self) -> Option<u8> {
-        self.rx.borrow_mut().as_mut().unwrap().read().ok()
+    fn read(&mut self) -> Option<u8> {
+        if let Some(rx) = &mut self.rx {
+            rx.read().ok()
+        } else {
+            Some(0)
+        }
     }
 
     #[inline(always)]
-    fn flush(&self) {
-        self.tx.borrow_mut().as_mut().unwrap().flush().unwrap()
+    fn flush(&mut self) {
+        if let Some(tx) = &mut self.tx {
+            tx.flush().ok();
+        }
     }
 }
 

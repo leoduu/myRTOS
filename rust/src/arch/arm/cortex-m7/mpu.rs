@@ -1,20 +1,19 @@
 
-use core::{cell::RefCell, ops::DerefMut};
 use cortex_m::peripheral::{MPU, SCB};
 use cortex_m_rt::exception;
 
 pub struct MPUControl {
-    mpu: RefCell<Option<MPU>>
+    mpu: Option<MPU>
 }
 
 impl MPUControl {
     pub const fn new() -> Self {
         Self { 
-            mpu: RefCell::new(None),
+            mpu: None,
         }
     }
 
-    pub unsafe fn init(&self, mpu: MPU, scb: &mut SCB) {
+    pub unsafe fn init(&mut self, mpu: MPU, scb: &mut SCB) {
 
 
         fn log2minus1(sz: u32) -> u32 {
@@ -116,16 +115,16 @@ impl MPUControl {
         cortex_m::asm::dsb();
         cortex_m::asm::isb();   
 
-        self.mpu.replace(Some(mpu));
+        self.mpu = Some(mpu);
     }
 
     #[inline(never)]
-    pub unsafe fn mpu_disable(&self) {
+    pub unsafe fn mpu_disable(&mut self) {
 
         cortex_m::asm::dsb();
 
         /* Disable the MPU and clear the control register*/
-        if let Some(mpu) = self.mpu.borrow_mut().deref_mut() {
+        if let Some(mpu) = &mut self.mpu {
             mpu.ctrl.write(0);
         }
     }

@@ -3,16 +3,12 @@ use core::fmt;
 
 pub trait ConsoleDriver {
 
-    fn write_fmt(&self, args: fmt::Arguments) -> fmt::Result;
+    fn write_fmt(&mut self, args: fmt::Arguments) -> fmt::Result;
 
-    fn write_char(&self, c: char) -> fmt::Result;
+    fn write_char(&mut self, c: char) -> fmt::Result;
 
-    fn read(&self) -> Option<u8>;
+    fn read(&mut self) -> Option<u8>;
     
-    fn flush(&self);
+    fn flush(&mut self);
 } 
 
-
-pub fn console() {
-    
-}

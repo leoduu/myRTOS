@@ -11,7 +11,7 @@ pub trait SysTimerDriver {
 
     fn set_irq_handler(&self, handler: fn());
 
-    fn set_periodic(&self, duration: Duration);
+    fn set_periodic(&mut self, duration: Duration);
 
     fn get_count(&self) -> u32;
 
