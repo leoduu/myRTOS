@@ -1,8 +1,8 @@
 #!/bin/bash
 # cargo build --features board_art-pi --release 
 
-# cargo flash --chip STM32H750XBHx --features board_art-pi --release --features logs
-cargo flash --chip STM32H750XBHx --features board_art-pi 
+cargo flash --chip STM32H750XBHx --features board_art-pi --release 
+# cargo flash --chip STM32H750XBHx --features board_art-pi 
 
 # rust-objdump -D target/thumbv7em-none-eabihf/debug/kernel > kernel.dis
 

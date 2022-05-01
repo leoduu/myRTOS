@@ -1,28 +1,36 @@
 
-pub mod round_robin;
 mod idle;
 
-use crate::kernel::sync::Mutex;
+// mod round_robin;
+// use round_robin::RoundRobinScheduler as KernelScheduler;
+
+mod preptive_priority;
+use preptive_priority::PreptivePriorityScheduler as KernelScheduler;
+
 use crate::utilities::intrusive_linkedlist::ListPtr;
 
 const OS_TICK_PER_SECOND: u64 = 1000;     // secudler every 1ms
 
-use round_robin::RoundRobinScheduler as KernelScheduler;
-
-static SCHEDULER: Mutex<KernelScheduler> = Mutex::new(KernelScheduler::new());
+static mut SCHEDULER: KernelScheduler = KernelScheduler::new();
 
 pub trait Scheduler {
-    fn run(&self) -> !;
-
-    fn push(&self, thread: ListPtr);
-    fn pop(&self) -> Option<ListPtr>;
-    fn detach(&self, node: ListPtr);
+    fn run(&mut self) -> !;
+    fn push(&mut self, thread: ListPtr);
+    fn pop(&mut self) -> Option<ListPtr>;
+    fn detach(&mut self, node: ListPtr);
     
     unsafe fn schedule(&mut self);
 }  
 
-pub fn scheduler() -> &'static Mutex<KernelScheduler> {
-    &SCHEDULER
+pub fn user_scheduler() {
+    use crate::kernel::syscall::*;
+    // schedule
+    syscall2_0(SysCallClass::Command, 
+            SysCallCammand::Schedule as usize);
+}
+
+pub fn scheduler() -> &'static mut KernelScheduler {
+    unsafe { &mut SCHEDULER }
 }
 
 pub unsafe fn init() {

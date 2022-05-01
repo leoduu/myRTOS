@@ -7,22 +7,12 @@ mod boot;
 
 use cortex_m_rt::exception;
 
-
-
 #[exception]
 fn HardFault(ef: &cortex_m_rt::ExceptionFrame) -> ! {
 
-    use crate::{board::console, drivers::console::ConsoleDriver};
-    macro_rules! kprintln {
-        () => ($crate::print!("\n"));
-        ($($arg:tt)*) => ({
-            console().write_fmt(format_args_nl!($($arg)*)).ok();
-        })
-    }
+    use crate::kprintln;
 
     cortex_m::interrupt::disable();
-
-    // console().write_fmt(format_args_nl!("{:?}", crate::arch::support::privilege())).ok();
 
     kprintln!("HardFault");
     kprintln!("\tr0 :{:#010x}  r1 :{:#010x}", ef.r0, ef.r1);

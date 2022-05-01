@@ -3,6 +3,7 @@ use core::fmt;
 use core::ptr::NonNull;
 use core::cell::Cell;
 
+#[derive(Debug)]
 pub struct LinkedList {
     head: Cell<Option<ListPtr>>,
 }
@@ -80,6 +81,7 @@ impl LinkedList {
 
         if let Some(head) = self.head() {
 
+
             self.head.set( 
                 if let Some(new) = head.next() {
                     new.set_prev(None);
@@ -88,10 +90,7 @@ impl LinkedList {
                     None
                 }
             );
-            head.set_next(None);
-
-            Some(head)
-            
+            Some(head)            
         } else {
             None
         }
@@ -120,6 +119,9 @@ impl LinkedList {
 
 } 
 
+// impl Copy for LinkedList {
+//     fn 
+// }
 
 #[derive(Clone, Copy, PartialEq)]
 pub struct ListPtr (pub NonNull<ListNode>);

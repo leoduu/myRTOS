@@ -5,7 +5,6 @@ pub mod syscall;
 pub mod ipc;
 pub mod sync;
 
-use crate::kernel::sched::Scheduler;
 use crate::mem;
 use crate::drivers;
 use crate::user;
@@ -17,7 +16,6 @@ pub unsafe fn kernel_init() -> ! {
 
     drivers::drivers_init();
     mem::heap_init();
-
     sched::init();
     user::user_init();
 
@@ -26,12 +24,13 @@ pub unsafe fn kernel_init() -> ! {
 
 
 unsafe fn kernel_main() -> ! {
+    use crate::println;
 
-    // use crate::println;
-    // println!("\n\n\n{:?}", mem::allocator());
-    // println!("{:?}", *sched::scheduler().lock());
+    println!("\n\n========== RTOS 1.1 ==========");
+    println!("{}", *sched::scheduler());
+    // println!("\n{:?}", mem::allocator());
 
-    sched::scheduler().lock().run();
+    sched::scheduler().run();
 }
 
 

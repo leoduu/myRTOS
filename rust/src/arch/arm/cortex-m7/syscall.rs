@@ -1,6 +1,4 @@
 
-
-
 use cortex_m_rt::exception;
 use crate::kernel::syscall::*;
 
@@ -19,7 +17,7 @@ unsafe fn SVCall() {
         mrsne   r0, psp
 
         bl      svc_handler
-
+        
         mov     r0, #1
         msr     CONTROL, r0
 
@@ -38,18 +36,17 @@ unsafe fn svc_handler(args: *mut usize) {
     let r2 = args.offset(2).read();
     let r3 = args.offset(3).read();
 
-    let s = SysCall::from_args(svc_num, r0, r1, r2, r3);
-
-    match s  {
+    match SysCall::from_args(svc_num, r0, r1, r2, r3) {
         Some(syscall) => {
-            match syscall {
+            let ret = match syscall {
                 SysCall::Command { command: cmd, arg1 } => {
-                    command(cmd, arg1);
+                    command(cmd, arg1)
                 },
                 SysCall::HardwareAccess { dev, arg1, arg2} => {
                     hardware_access(dev, arg1, arg2)
                 },
-            }
+            };
+            args.offset(0).write_volatile(ret);
         },
         None => {
             panic!("error syscall");
@@ -58,28 +55,35 @@ unsafe fn svc_handler(args: *mut usize) {
 }
 
 
-fn command(cmd: SysCallCammand, _arg0: usize) {
+fn command(cmd: SysCallCammand, _arg0: usize) -> usize {
 
-    use crate::kernel::sched::{scheduler, Scheduler};
+    use crate::kernel::sched::scheduler;
 
     match cmd {
         SysCallCammand::Schedule => unsafe {
-            scheduler().lock().schedule();  
+            scheduler().schedule();  
         },
     }
 
+    0
 }
 
-fn hardware_access(dev: SysCallDevice, arg0: usize, _arg1: usize) {
+fn hardware_access(dev: SysCallDevice, arg0: usize, _arg1: usize) -> usize {
 
     use core::fmt;
     use crate::{board::console, drivers::console::ConsoleDriver};
 
     match dev {
-        SysCallDevice::Uart => unsafe {
+        SysCallDevice::UartTx => unsafe {
             console().write_fmt(*(arg0 as *const fmt::Arguments)).ok();
+        }
+        SysCallDevice::UartRx => unsafe {
+            if let Some(ch) = console().read() {
+                return ch as usize
+            }
         }
     }
 
+    0
 }
 

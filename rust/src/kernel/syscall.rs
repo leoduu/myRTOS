@@ -38,6 +38,25 @@ pub fn syscall2_0(class: SysCallClass, arg0: usize) {
     }
 }
 
+pub fn syscall2_1(class: SysCallClass, mut arg0: usize) -> usize {
+    match class {
+        SysCallClass::Command => unsafe {
+            asm!{ 
+                "svc #1",
+                inout("r0") arg0,
+            };
+            arg0
+        },
+        SysCallClass::HardwareAccess => unsafe {
+            asm!{ 
+                "svc #2",
+                inout("r0") arg0,
+            };
+            arg0
+        },
+    }
+}
+
 
 
 #[derive(Debug, Eq, PartialEq)]
@@ -122,7 +141,8 @@ impl TryFrom<usize> for SysCallCammand {
 #[derive(Debug, Eq, PartialEq)]
 #[repr(usize)]
 pub enum SysCallDevice {
-    Uart = 1,
+    UartTx = 1,
+    UartRx = 2,
 }
 
 impl TryFrom<usize> for SysCallDevice {
@@ -130,7 +150,8 @@ impl TryFrom<usize> for SysCallDevice {
     
     fn try_from(num: usize) -> Result<SysCallDevice, usize> {
         match num {
-            1 => Ok(SysCallDevice::Uart),
+            1 => Ok(SysCallDevice::UartTx),
+            2 => Ok(SysCallDevice::UartRx),
             other => Err(other)
         }
     }

@@ -23,7 +23,7 @@ mod user;
 mod log;
 
 // target architecture
-#[cfg(target_arch = "arm")]
+// #[cfg(target_arch = "arm")]
 #[path = "arch/arm/cortex-m7/mod.rs"]
 pub mod arch;
 

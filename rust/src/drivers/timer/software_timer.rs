@@ -4,7 +4,7 @@ use crate::drivers::{Driver, DeviceType};
 use crate::utilities::intrusive_linkedlist::*;
 use crate::{container_of_mut, container_of};
 use crate::board::{software_timer, system_timer};
-use crate::kernel::thread::{Thread, ThreadStatus};
+use crate::kernel::thread::Thread;
 use core::fmt;
 
 pub trait SoftwareTimerDriver {
@@ -56,8 +56,6 @@ impl SoftwareTimerDriver for SoftWareTimer {
 
     unsafe fn check(&self) {
 
-        // crate::println!("c {:?}", self);
-
         let curr_tick = system_timer().tick();
 
         // skip first node
@@ -68,19 +66,15 @@ impl SoftwareTimerDriver for SoftWareTimer {
             let timer = Timer::from_ptr_mut(&p);
             if timer.timeout <= curr_tick {
 
-                // crate::println!("{:?}", *crate::kernel::sched::scheduler().lock());
-
-                timer.status = TimerStatus::Leisure;
                 self.list.detach(p);
                 match timer.mode {
                     TimerMode::Block => {                        
                         let thread = Thread::from_timer(timer);
-                        thread.status = ThreadStatus::Ready;
+                        thread.wakup();
                     },
                     TimerMode::NonBlock(f) => f(),
                 }
-                // crate::println!("c {:?}", self);
-                // return;
+                timer.status = TimerStatus::Leisure;
             }
             ptr = p.next();
         }
@@ -121,7 +115,6 @@ impl fmt::Debug for SoftWareTimer {
         write!(f, "{} timers in list", cnt)
     }
 }
-
 
 
 static mut TIMER_HEAD: Timer = Timer::new();
@@ -178,13 +171,6 @@ impl Timer {
         self.status = TimerStatus::Running;
 
         software_timer().add(self);
-        // scheduler().lock().schedule();
-
-        use crate::kernel::syscall::*;
-        // schedule
-        syscall2_0(SysCallClass::Command, 
-                SysCallCammand::Schedule as usize);
-   
     }
 
     fn stop(&mut self) {
@@ -215,11 +201,7 @@ impl fmt::Debug for Timer {
         let thread = unsafe { Thread::from_timer(&self) };
 
         writeln!(f, "timer ({:?})", self as *const _)?;
-        write!(f, "\towner  | ")?;
-        for i in 0..10 {
-            write!(f, "{}", thread.name[i] as char)?;
-        }
-        writeln!(f, "")?;
+        writeln!(f, "\towner  | {}", thread)?;
         writeln!(f, "\ttimeout| {}", self.timeout)?;
         writeln!(f, "\tmode   | {:?}", self.mode)?;
         writeln!(f, "\tstatus | {:?}", self.status)?;

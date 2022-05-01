@@ -3,7 +3,7 @@ use core::mem::size_of;
 use core::fmt;
 use crate::drivers::timer::software_timer::Timer;
 use crate::arch::context::StackFrame;
-use crate::kernel::sched::{scheduler, Scheduler};
+use crate::kernel::sched::{scheduler, user_scheduler};
 use crate::{container_of, container_of_mut};
 use crate::utilities::intrusive_linkedlist::*;
 use crate::drivers::timer::software_timer::*;
@@ -28,13 +28,13 @@ impl fmt::Display for ThreadStatus {
     }
 }
 
+#[repr(C)]
 pub struct Thread {
 
     node: ListNode,
 
-    pub name: ThreadName,           // Thread Name
-    //pid: u32,                     // Thread ID
-    
+    name: ThreadName,           // Thread Name
+    pub prio: u8,                   // Thread Priority
     pub status: ThreadStatus,       // Thread status
 
     sp: usize,
@@ -49,9 +49,10 @@ impl Thread {
 
     pub const fn new() -> Self {
         Self {
-            name: [0; 10],
             node: ListNode::new(),
+            name: [0; 10],
             status: ThreadStatus::Ready,
+            prio: 0,
             sp: 0,
             stack_size: 0,
             stack_start: 0,
@@ -62,29 +63,49 @@ impl Thread {
     
     pub unsafe fn init(&mut self, 
                         name: &str,
-                        entry: fn() -> !,
+                        prio: u8,
+                        entry: fn(ListPtr) -> !,
                         stack_start: usize,
                         stack_size: usize) 
     {
         for i in 0..name.len() {
             self.name[i] = name.as_bytes()[i];
         }
+        self.prio = prio;
         self.stack_start = stack_start;
         self.stack_size = stack_size;
         self.sp = stack_start + stack_size - size_of::<StackFrame>();
 
         unsafe {
-            (self.sp as *mut StackFrame).write_volatile(StackFrame::new(entry as usize));
+            (self.sp as *mut StackFrame)
+            .write_volatile(StackFrame::new(self.ptr(), entry as usize));
         }
 
-        scheduler().lock().push(ListPtr::new(&mut self.node).unwrap())
+        scheduler().add(self.ptr())
     }
 
-    pub fn sleep(&mut self, tick: u128) {
+    pub fn sleep(&mut self, tick: Option<u128>) {
 
+        if self.status != ThreadStatus::Ready {
+            return;
+        } 
         self.status = ThreadStatus::Sleep;
-        self.timer.timeout(tick, TimerMode::Block);
+        scheduler().detach(self.ptr());
+        
+        if let Some(t) = tick {
+            self.timer.timeout(t, TimerMode::Block);
+        } 
 
+        user_scheduler();
+    }
+
+    pub fn wakup(&mut self) {
+        self.status = ThreadStatus::Ready;
+        scheduler().add(self.ptr());
+    }
+
+    pub fn close(&mut self) {
+        self.status = ThreadStatus::Terminal;
     }
 
     pub fn timer(&mut self, tick: u128, handler: fn()) {
@@ -93,10 +114,8 @@ impl Thread {
     }
 
     #[inline]
-    pub fn show_name(&self) {
-        // for i in 0..THREAD_NAME_LEN {
-        //     crate::print!("{}", self.name[i] as char);
-        // }
+    pub fn ptr(&mut self) -> ListPtr {
+        ListPtr::new(&mut self.node).unwrap()
     }
 
     #[inline]
@@ -104,6 +123,7 @@ impl Thread {
         &self.sp as *const usize as *mut usize
     }
 
+    #[inline]
     pub unsafe fn from_timer(timer: &Timer) -> &mut Self {
         container_of_mut!(timer, Thread, timer)
     }
@@ -124,6 +144,19 @@ impl Intrusive for Thread {
     }
 }
 
+
+impl fmt::Display for Thread {
+
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for i in 0..THREAD_NAME_LEN {
+            write!(f, "{}", self.name[i] as char)?;
+        }
+
+        Ok(())
+    }
+
+}
+
 impl fmt::Debug for Thread {
 
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -135,8 +168,8 @@ impl fmt::Debug for Thread {
         writeln!(f, "\tstate| {:?}", self.status)?;
         writeln!(f, "\tsp   | {:#010x}", self.sp)?;
         writeln!(f, "\tstack| {:#010x} - {:#010x}", self.stack_start, self.stack_start+self.stack_size)?;
-        writeln!(f, "\tsize | {} Byte", self.stack_size)?;
-        writeln!(f, "\tused | {} Byte", self.stack_start+self.stack_size-self.sp)?;
+        writeln!(f, "\tsize | {} Bytes", self.stack_size)?;
+        writeln!(f, "\tused | {} Bytes", self.stack_start+self.stack_size-self.sp)?;
         writeln!(f, "\tnode | {:?}", self.node)?;
         Ok(())
     }

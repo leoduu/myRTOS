@@ -2,6 +2,7 @@
 
 use core::fmt;
 use cortex_m_rt::exception;
+use crate::utilities::intrusive_linkedlist::ListPtr;
 
 #[no_mangle]
 pub static mut CURR_SP: usize = 0;
@@ -10,25 +11,24 @@ pub static mut NEXT_SP: usize = 0;
 #[no_mangle]
 pub static mut INT_FLAG: usize = 0;
 
+#[repr(C)]
 pub struct StackFrame {
-
     // mamual save
     // r4 - r11
     regs_4_11: [usize; 8],
-
     // auto save
     // r0, r1, r2, r3
-    // r12,lr, pc, xpsr
+    // r12, lr, pc, xpsr
     regs_auto: [usize; 8],
-
 }
 
 impl StackFrame {
-    pub fn new(entry: usize) -> Self {
+    pub fn new(ptr: ListPtr, entry: usize) -> Self {
         let mut stackframe = Self {
             regs_4_11: [0; 8],
             regs_auto: [0; 8],
         };
+        stackframe.regs_auto[0] = unsafe {core::mem::transmute(ptr)};
         stackframe.regs_auto[6] = entry;
         stackframe.regs_auto[7] = 0x0100_0000;
         stackframe

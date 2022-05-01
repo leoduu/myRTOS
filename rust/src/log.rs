@@ -1,12 +1,11 @@
 
 use core::fmt;
-use crate::{board::console, drivers::console::ConsoleDriver};
 
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
     use crate::arch::support::*;
     use crate::kernel::syscall::*;
-
+    use crate::{board::console, drivers::console::ConsoleDriver};
 
     match cpu_status() {
         CPUStatus::Pmode(_) => {
@@ -17,7 +16,7 @@ pub fn _print(args: fmt::Arguments) {
         },
         CPUStatus::Umode(SP::PSP) => unsafe {
             syscall3_0(SysCallClass::HardwareAccess, 
-                        SysCallDevice::Uart as usize, 
+                        SysCallDevice::UartTx as usize, 
                         &args as *const _ as usize);
             
         },
@@ -44,71 +43,44 @@ macro_rules! println {
 }
 
 
-// /// Prints an info, with a newline.
-// #[macro_export]
-// macro_rules! info {
-//     ($string:expr) => ({
-//         use crate::drivers::timer::{system_timer, system_timer::Interface};
+/// Prints an info, with a newline.
+#[macro_export]
+macro_rules! info {
+    ($string:expr) => ({
+        use core::time::Duration;
+        use crate::board::system_timer;
+        use crate::drivers::timer::system_timer::SysTimerDriver;
 
-//         let timestamp = system_timer().get_cycle();
-//         let timestamp_subsec_us = timestamp.subsec_micros();
+        let timestamp = Duration::from_millis(system_timer().tick() as u64);
+        let timestamp_subsec_ms = timestamp.subsec_millis();
 
-//         $crate::log::_print(format_args_nl!(
-//             concat!("[  {:>3}.{:06}] ", $string),
-//             timestamp.as_secs(),
-//             timestamp_subsec_us % 1_000_000,
-//         ));
-//     });
-//     ($format_string:expr, $($arg:tt)*) => ({
-//         use crate::drivers::timer::{system_timer, system_timer::Interface};
+        $crate::log::_print(format_args_nl!(
+            concat!("[{:>3}.{:03}] ", $string),
+            timestamp.as_secs(),
+            timestamp_subsec_ms % 1_000,
+        ));
+    });
+    ($format_string:expr, $($arg:tt)*) => ({
+        use core::time::Duration;
+        use crate::board::system_timer;
+        use crate::drivers::timer::system_timer::SysTimerDriver;
 
-//         let timestamp = system_timer().get_cycle();
-//         let timestamp_subsec_us = timestamp.subsec_micros();
+        let timestamp = Duration::from_millis(system_timer().tick() as u64);
+        let timestamp_subsec_ms = timestamp.subsec_millis();
 
-//         $crate::log::_print(format_args_nl!(
-//             concat!("[  {:>3}.{:06}] ", $format_string),
-//             timestamp.as_secs(),
-//             timestamp_subsec_us % 1_000_000,
-//             $($arg)*
-//         ));
-//     })
-// }
+        $crate::log::_print(format_args_nl!(
+            concat!("[{:>3}.{:03}] ", $format_string),
+            timestamp.as_secs(),
+            timestamp_subsec_ms % 1_000,
+            $($arg)*
+        ));
+    })
+}
 
-// /// Prints a warning, with a newline.
-// #[macro_export]
-// macro_rules! warn {
-//     ($string:expr) => ({
-//         use crate::drivers::timer::{system_timer, system_timer::Interface};
-
-//         let timestamp = system_timer().get_cycle();
-//         let timestamp_subsec_us = timestamp.subsec_micros();
-
-//         $crate::log::_print(format_args_nl!(
-//             concat!("[W {:>3}.{:03}{:03}] ", $string),
-//             timestamp.as_secs(),
-//             timestamp_subsec_us / 1_000,
-//             timestamp_subsec_us % 1_000
-//         ));
-//     });
-//     ($format_string:expr, $($arg:tt)*) => ({
-//         use crate::drivers::timer::system_timer;
-
-//         let timestamp = system_timer().get_cycle();
-//         let timestamp_subsec_us = timestamp.subsec_micros();
-
-//         $crate::log::_print(format_args_nl!(
-//             concat!("[W {:>3}.{:03}{:03}] ", $format_string),
-//             timestamp.as_secs(),
-//             timestamp_subsec_us / 1_000,
-//             timestamp_subsec_us % 1_000,
-//             $($arg)*
-//         ));
-//     })
-// }
-
-
+#[macro_export]
 macro_rules! kprintln {
     ($($arg:tt)*) => ({
+        use crate::{board::console, drivers::console::ConsoleDriver};
         console().write_fmt(format_args_nl!($($arg)*)).ok();
     })
 }
@@ -121,9 +93,7 @@ fn panic(e: &PanicInfo) -> ! {
 
     cortex_m::interrupt::disable();
 
-    if cfg!(feature = "logs") {
-        kprintln!("{:?}", e.location());
-    }
+    kprintln!("{:?}", e.location());
 
     loop {
 

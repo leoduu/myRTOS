@@ -1,9 +1,12 @@
 
+use crate::utilities::intrusive_linkedlist::ListPtr;
+use crate::kernel::thread::Thread;
+use crate::{println, print};
+use alloc::string::String;
 
-use crate::{kernel::thread::Thread, println};
-
+const SHELL_PRIO: u8 = 31;
 const SHELL_NUM: usize = 3;
-const SHELL_STACK_SIZE: usize = 5 * 1024;
+const SHELL_STACK_SIZE: usize = 5120;
 #[link_section = ".bss.stack_shell"]
 static mut SHELL_STACK:[u8; SHELL_STACK_SIZE] = [0; SHELL_STACK_SIZE];
 
@@ -23,31 +26,67 @@ static SHELL_HANDLE:[fn(); SHELL_NUM] = [
 
 pub unsafe fn init() {
 
-    SHELL.init("shell", shell_entry, SHELL_STACK.as_ptr() as usize, SHELL_STACK_SIZE);
+    SHELL.init("shell", SHELL_PRIO, shell_entry, 
+                SHELL_STACK.as_ptr() as usize, SHELL_STACK_SIZE);
 
 }
 
-pub fn shell_entry() -> ! {
+pub fn shell_entry(_ptr: ListPtr) -> ! {
 
-    println!(">>>>>>>> console <<<<<<<<");
+    print!(">>>>>>>> console <<<<<<<<\n\n>> ");
+
+    let mut buff = String::new();
 
     loop {
-        
+
+        use crate::kernel::syscall::*;
+        let ch = syscall2_1(SysCallClass::HardwareAccess, 
+                                    SysCallDevice::UartRx as usize);
+
+        if ch != 0 {
+            let c = unsafe {char::from_u32_unchecked(ch as u32)};
+
+            if c == '\r' || c == '\n' {
+                println!();
+                shell_prase(&buff);
+                buff.clear();
+                print!(">> ");  
+            } else {
+                buff.push(c);
+                print!("{}", c);
+            }
+        }
     }
 }
 
+fn shell_prase(buff: &String) {
+
+    if buff.is_empty() {
+        return;
+    }
+
+    for (i, cmd) in SHELL_COMMAND.iter().enumerate() {
+        if buff.eq(*cmd) {
+            SHELL_HANDLE[i]();
+            return;
+        } 
+    }
+
+    println!("{}: command not found", buff.as_str());   
+}
+
 fn shell_show_commands() {
-    // println!();
-    // for i in 0..SHELL_NUM {
-    //     print!("{} ", SHELL_COMMAND[i]);
-    // }
+    print!("all commands: ");
+    for i in 0..SHELL_NUM {
+        print!("{} ", SHELL_COMMAND[i]);
+    }
+    println!();
 }
 
 fn shell_command_memory() {
-    
+    println!("{:?}", crate::mem::allocator());
 }
 
 fn shell_command_lsof() {
-    // scheduler().lock(|sc| println!("{}", sc));
+    println!("{}", crate::kernel::sched::scheduler());
 }
-

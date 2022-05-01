@@ -6,7 +6,7 @@ use core::alloc::GlobalAlloc;
 use crate::align_up_16_bit;
 use crate::container_of;
 use crate::utilities::intrusive_linkedlist::*;
-use crate::kernel::sync::Mutex;
+use crate::utilities::NullLock;
 use crate::container_of_mut;
 
 const HEAP_NODE_SIZE : usize = core::mem::size_of::<HeapNode>();
@@ -27,11 +27,11 @@ impl fmt::Display for HeapNodeStatus {
     }
 }
 
-pub struct LockedHeap(Mutex<Heap>);
+pub struct LockedHeap(NullLock<Heap>);
 
 impl LockedHeap {
     pub const fn new() -> Self {
-        LockedHeap(Mutex::new(Heap::new()))
+        LockedHeap(NullLock::new(Heap::new()))
     }
 
     pub unsafe fn init(&self, bottom: usize, size: usize) {

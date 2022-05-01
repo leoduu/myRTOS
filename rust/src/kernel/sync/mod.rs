@@ -1,5 +1,9 @@
 
-pub mod mutex;
+pub mod semaphore;
 
-pub use mutex::*;
+pub use semaphore::*;
+pub use spin::Mutex;
+pub use spin::RwLock;
+
+
 

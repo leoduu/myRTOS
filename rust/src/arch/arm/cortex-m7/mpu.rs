@@ -135,8 +135,8 @@ fn MemoryManagement() {
 
     cortex_m::interrupt::disable();
 
-    use crate::println;
-    println!("MemoryManagement");
+    use crate::kprintln;
+    kprintln!("MemoryManagement");
 
     loop {}
 }

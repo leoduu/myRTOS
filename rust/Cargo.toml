@@ -18,9 +18,11 @@ logs            = []
 lazy_static     = { version = "1.4.0", default-features = false, features = ["spin_no_std"]}
 embedded-hal    = { version = "0.2.6", features = ["unproven"] }
 panic-halt      = "^0.2.0"    # Panic handler
+spin            = "0.9.3"
+heapless        = "0.7.10"
 
 
-[target.'cfg(target_arch = "arm")'.dependencies]
+#[target.'cfg(target_arch = "arm")'.dependencies]
 cortex-m        = "^0.7.4"      # Access to the generic ARM peripherals
 cortex-m-rt     = "^0.6.12"     # Startup code for the ARM Core
 stm32h7         = {version = "0.14.0", features = ["stm32h743v", "rt"], optional = true}
@@ -30,7 +32,7 @@ stm32h7xx-hal   = {version = "0.11.0", features = ["stm32h743v","rt"], optional 
 
 [profile.dev]
 debug = true
-opt-level = 2
+opt-level = 1
 
 [profile.release]
 lto = true

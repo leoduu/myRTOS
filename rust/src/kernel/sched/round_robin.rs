@@ -20,7 +20,7 @@ impl RoundRobinScheduler {
 }
 
 impl Scheduler for RoundRobinScheduler {
-    fn run(&self) -> ! {
+    fn run(&mut self) -> ! {
         if let Some(ptr) = self.list.head() {
             unsafe {
                 let thread = Thread::from_ptr_mut(&ptr);
@@ -36,16 +36,16 @@ impl Scheduler for RoundRobinScheduler {
     }
 
     #[inline]
-    fn push(&self, node: ListPtr) {
+    fn push(&mut self, node: ListPtr) {
         self.list.push_back(node);
     }
 
     #[inline]
-    fn pop(&self) -> Option<ListPtr> {
+    fn pop(&mut self) -> Option<ListPtr> {
         self.list.pop_front()
     }
 
-    fn detach(&self, node: ListPtr) {
+    fn detach(&mut self, node: ListPtr) {
 
         if let Some(head) = self.list.head() {
             if node == head {
@@ -54,6 +54,8 @@ impl Scheduler for RoundRobinScheduler {
                 self.list.detach(node);
             }
         }
+        
+        unsafe {self.schedule();}
     }
 
     #[inline(never)]
@@ -114,10 +116,7 @@ impl fmt::Display for RoundRobinScheduler {
             let thread = Thread::from_ptr(&ptr); 
 
             if thread.status == ThreadStatus::Ready {
-                for i in 0..10 {
-                    write!(f, "{}", thread.name[i] as char)?;
-                }
-                write!(f, " ")?;
+                write!(f, "{} ", thread);
             }
             if let Some(next) = ptr.next() {
                 ptr = next;

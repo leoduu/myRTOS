@@ -1,7 +1,6 @@
 use cortex_m::peripheral::{SYST, syst::SystClkSource};
 use crate::drivers::timer::software_timer::SoftwareTimerDriver;
 use crate::drivers::timer::system_timer::SysTimerDriver;
-use crate::kernel::sched::Scheduler;
 use cortex_m_rt::exception;
 
 
@@ -43,7 +42,7 @@ impl SysTimerDriver for SysTimer {
         if let Some(timer) = &mut self.timer {
             timer.set_clock_source(SystClkSource::External);
             // timer.set_reload(400_000);
-            timer.set_reload( 50_000);
+            timer.set_reload(50_000);
             timer.clear_current();
             timer.enable_interrupt();
             timer.enable_counter();
@@ -85,16 +84,14 @@ unsafe fn SysTick() {
     cortex_m::interrupt::disable();
 
     system_timer().ticktack();
-
     software_timer().check();
-
     system_timer().irq_handler()();
 
     cortex_m::interrupt::enable();
 }
 
 fn irq_handler_default() {
-    unsafe { crate::kernel::sched::scheduler().lock().schedule(); }
+    unsafe { crate::kernel::sched::scheduler().schedule(); }
 }
 
 
